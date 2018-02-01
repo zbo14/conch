@@ -1,0 +1,16 @@
+{application, host,
+ [{description, "The conch host"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, { host_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    ssh
+   ]},
+  {env,[{lport,8889}]},
+  {modules, []},
+  {maintainers, []},
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.
