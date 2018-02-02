@@ -1,7 +1,7 @@
 -module(host).
+-include("member.hrl").
 -include("include/codes.hrl").
 -behaviour(gen_server).
--record(member,{alias,topics=[],ch,cn}).
 -record(state,{dir,lport,members=[],rooms=[],sshd}).
 -export([run/0,start/0,start_link/0]).
 -export([init/1,handle_call/3,handle_cast/2,terminate/2,code_change/3]).
@@ -32,10 +32,10 @@ handle_cast({CH,CN,Msg},State) ->
         {?DECODE_ERROR,Msg} ->
             respond_error(CH,CN,{?DECODE_ERROR,Msg},State);
         Result -> 
-            handle_request(CH,CN,Msg,Result,State)
+            handle(CH,CN,Msg,Result,State)
     end.
 
-handle_request(CH,CN,Msg,{?JOIN_CHAT,Alias},State) ->
+handle(CH,CN,Msg,{?JOIN_CHAT,Alias},State) ->
     case get_member(Alias,State) of 
         false ->
             Member = #member{alias=Alias,ch=CH,cn=CN},
@@ -44,18 +44,33 @@ handle_request(CH,CN,Msg,{?JOIN_CHAT,Alias},State) ->
             respond_error(CH,CN,{?ALIAS_TAKEN,Alias},State)
     end;
 
-handle_request(CH,CN,Msg,Result,State) ->
+handle(CH,CN,Msg,Result,State) ->
     case get_member(CN,State) of
         false ->
             respond_error(CH,CN,?UNEXPECTED_CONNECTION,State);
         Member ->
-            handle_request(Member,Msg,Result,State)
+            handle(Member,Msg,Result,State)
     end.
 
-handle_request(Member,Msg,?LEAVE_CHAT,State) ->
+handle(#member{ch=CH,cn=CN},_Msg,?MEMBERS,#state{members=Members}=State) ->
+    Msg = host_util:encode({?MEMBERS,Members}),
+    ok = ssh_connection:send(CN,CH,Msg),
+    {noreply,State};
+
+handle(#member{ch=CH,cn=CN},_Msg,?ROOMS,#state{rooms=Rooms}=State) ->
+    Msg = host_util:encode({?ROOMS,Rooms}),
+    ok = ssh_connection:send(CN,CH,Msg),
+    {noreply,State};
+
+handle(#member{ch=CH,cn=CN,topics=Topics},_Msg,?MY_ROOMS,State) ->
+    Msg = host_util:encode({?MY_ROOMS,Topics}),
+    ok = ssh_connection:send(CN,CH,Msg),
+    {noreply,State};
+
+handle(Member,Msg,?LEAVE_CHAT,State) ->
     remove_from_chat(Member,Msg,State);
 
-handle_request(Member,Msg,{?JOIN_ROOM,Topic},State) ->
+handle(Member,Msg,{?JOIN_ROOM,Topic},State) ->
     HasRoom = has_room(Topic,State),
     if 
         HasRoom ->
@@ -64,7 +79,7 @@ handle_request(Member,Msg,{?JOIN_ROOM,Topic},State) ->
             new_room(Member,Msg,Topic,State)
     end;
 
-handle_request(Member,Msg,{?LEAVE_ROOM,Topic},State) ->
+handle(Member,Msg,{?LEAVE_ROOM,Topic},State) ->
     HasRoom = has_room(Topic,State),
     if
         HasRoom ->
@@ -73,12 +88,12 @@ handle_request(Member,Msg,{?LEAVE_ROOM,Topic},State) ->
             respond_error(Member,{?ROOM_NOT_FOUND,Topic},State)
     end;
 
-handle_request(Member,Msg,{?SEND_CHAT,_Payload},State) ->
+handle(Member,Msg,{?SEND_CHAT,_Payload},State) ->
     FullMsg = add_alias(Member,Msg),
     NewState = send_msgs(FullMsg,State),
     {noreply,NewState};
 
-handle_request(Member,Msg,{?SEND_ROOM,Topic,_Payload},State) ->
+handle(Member,Msg,{?SEND_ROOM,Topic,_Payload},State) ->
     HasRoom = has_room(Topic,State),
     if 
         HasRoom -> 
@@ -87,7 +102,7 @@ handle_request(Member,Msg,{?SEND_ROOM,Topic,_Payload},State) ->
             respond_error(Member,{?ROOM_NOT_FOUND,Topic},State)
     end;
 
-handle_request(Member,Msg,{?SEND_MEMBER,To,_Payload},State) ->
+handle(Member,Msg,{?SEND_MEMBER,To,_Payload},State) ->
     case get_member(To,State) of 
         false ->
             respond_error(Member,{?ALIAS_NOT_FOUND,To},State);

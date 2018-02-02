@@ -1,6 +1,23 @@
 -module(host_util).
+-include("member.hrl").
 -include("include/codes.hrl").
 -export([encode/1,decode/1]).
+
+length_prefix(Bin) ->
+    Size = byte_size(Bin),
+    [Size,Bin].
+
+encode({?MEMBERS,Members}) ->
+    Aliases = lists:flatmap(fun(#member{alias=Alias}) -> length_prefix(Alias) end,Members),
+    list_to_binary([?MEMBERS|Aliases]);
+
+encode({?ROOMS,Rooms}) ->
+    Rooms_ = lists:flatmap(fun(Room) -> length_prefix(Room) end,Rooms),
+    list_to_binary([?ROOMS|Rooms_]);
+
+encode({?MY_ROOMS,MyRooms}) ->
+    MyRooms_ = lists:flatmap(fun(Room) -> length_prefix(Room) end,MyRooms),
+    list_to_binary([?MY_ROOMS|MyRooms_]);
 
 encode({?ALIAS_TAKEN,<<Alias/binary>>}) ->
     Size = byte_size(Alias),
@@ -51,6 +68,15 @@ decode(<<?SEND_ROOM,TSize,Topic:TSize/binary,PSize:32,Payload:PSize/binary>>) ->
 
 decode(<<?SEND_MEMBER,TSize,To:TSize/binary,PSize:32,Payload:PSize/binary>>) -> 
     {?SEND_MEMBER,To,Payload};
+
+decode(<<?MEMBERS>>) ->
+    ?MEMBERS;
+
+decode(<<?ROOMS>>) ->
+    ?ROOMS;
+
+decode(<<?MY_ROOMS>>) ->
+    ?MY_ROOMS;
 
 decode(<<Msg/binary>>) ->
     {?DECODE_ERROR,Msg}.

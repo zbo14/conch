@@ -34,82 +34,69 @@ client_test(_Config) ->
     %% Start client
     {ok,Pid} = client:start(),
 
-    %% Join chat
-    ok = client:join_chat(Pid,?ALIAS),
-    joined_chat(),
-
-    %% Join room
-    ok = client:join_room(Pid,?TOPIC),
-    joined_room(),
-
-    %% Send chat
-    ok = client:send_chat(Pid,?PAYLOAD),
-    sent_chat(),
-
-    %% Send room
-    ok = client:send_room(Pid,?TOPIC,?PAYLOAD),
-    sent_room(),
-
-    %% Send member
-    ok = client:send_member(Pid,?TO,?PAYLOAD),
-    sent_member(),
-
-    %% Leave room
-    ok = client:leave_room(Pid,?TOPIC),
-    left_room(),
-    
-    %% Leave chat
-    ok = client:leave_chat(Pid),
-    left_chat().
+    join_chat(Pid),
+    join_room(Pid),
+    send_chat(Pid),
+    send_room(Pid),
+    send_member(Pid),
+    leave_room(Pid),
+    leave_chat(Pid),
+    members(Pid),
+    rooms(Pid),
+    my_rooms(Pid).
 
 %% Assertions
 
-joined_chat() ->
-    Size = byte_size(?ALIAS),
-    receive
-        Msg ->
-            ?assertEqual(Msg,<<?JOIN_CHAT,Size,?ALIAS:Size/binary>>)
-    end.
-
-joined_room() ->
-    Size = byte_size(?TOPIC),
-    receive
-        Msg ->
-            ?assertEqual(Msg,<<?JOIN_ROOM,Size,?TOPIC:Size/binary>>)
-    end.
-
-sent_chat() ->
-    Size = byte_size(?PAYLOAD),
+check(Expected) ->
     receive 
         Msg ->
-            ?assertEqual(Msg,<<?SEND_CHAT,Size:32,?PAYLOAD:Size/binary>>)
+            ?assertEqual(Expected,Msg)
     end.
 
-sent_room() ->
+join_chat(Pid) ->
+    ok = client:join_chat(Pid,?ALIAS),
+    Size = byte_size(?ALIAS),
+    check(<<?JOIN_CHAT,Size,?ALIAS:Size/binary>>).
+
+join_room(Pid) ->
+    ok = client:join_room(Pid,?TOPIC),
+    Size = byte_size(?TOPIC),
+    check(<<?JOIN_ROOM,Size,?TOPIC:Size/binary>>).
+
+send_chat(Pid) ->
+    ok = client:send_chat(Pid,?PAYLOAD),
+    Size = byte_size(?PAYLOAD),
+    check(<<?SEND_CHAT,Size:32,?PAYLOAD:Size/binary>>).
+
+send_room(Pid) ->
+    ok = client:send_room(Pid,?TOPIC,?PAYLOAD),
     TSize = byte_size(?TOPIC),
     PSize = byte_size(?PAYLOAD),
-    receive 
-        Msg ->
-            ?assertEqual(Msg,<<?SEND_ROOM,TSize,?TOPIC:TSize/binary,PSize:32,?PAYLOAD:PSize/binary>>)
-    end.
+    check(<<?SEND_ROOM,TSize,?TOPIC:TSize/binary,PSize:32,?PAYLOAD:PSize/binary>>).
 
-sent_member() ->
+send_member(Pid) ->
+    ok = client:send_member(Pid,?TO,?PAYLOAD),
     TSize = byte_size(?TO),
     PSize = byte_size(?PAYLOAD),
-    receive 
-        Msg ->
-            ?assertEqual(Msg,<<?SEND_MEMBER,TSize,?TO:TSize/binary,PSize:32,?PAYLOAD:PSize/binary>>)
-    end.
+    check(<<?SEND_MEMBER,TSize,?TO:TSize/binary,PSize:32,?PAYLOAD:PSize/binary>>).
 
-left_room() ->
+leave_room(Pid) ->
+    ok = client:leave_room(Pid,?TOPIC),
     Size = byte_size(?TOPIC),
-    receive 
-        Msg ->
-            ?assertEqual(Msg,<<?LEAVE_ROOM,Size,?TOPIC:Size/binary>>)
-    end.
+    check(<<?LEAVE_ROOM,Size,?TOPIC:Size/binary>>).
 
-left_chat() ->
-    receive
-        Msg ->
-            ?assertEqual(Msg,<<?LEAVE_CHAT>>)
-    end.
+leave_chat(Pid) ->
+    ok = client:leave_chat(Pid),
+    check(<<?LEAVE_CHAT>>).
+
+members(Pid) ->
+    ok = client:members(Pid),
+    check(<<?MEMBERS>>).
+
+rooms(Pid) ->
+    ok = client:rooms(Pid),
+    check(<<?ROOMS>>).
+
+my_rooms(Pid) ->
+    ok = client:my_rooms(Pid),
+    check(<<?MY_ROOMS>>).

@@ -1,0 +1,1 @@
+-record(member,{alias,ch,cn,topics=[]}).

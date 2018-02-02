@@ -22,3 +22,14 @@ Send a message to every member in a room that you joined.
 
 #### send_member
 Send a message to one member in the chat.
+
+### Queries 
+
+#### members 
+Get a list of member aliases.
+
+#### rooms
+Get a list of room topics.
+
+#### my_rooms 
+Get a list of the rooms you joined.

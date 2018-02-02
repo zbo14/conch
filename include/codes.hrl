@@ -6,6 +6,9 @@
 -define(SEND_CHAT,4).
 -define(SEND_ROOM,5).
 -define(SEND_MEMBER,6).
+-define(MEMBERS,7).
+-define(ROOMS,8).
+-define(MY_ROOMS,9).
 
 %% Error Codes (100-199)
 -define(ALIAS_TAKEN,100).

@@ -4,6 +4,7 @@
 -record(state,{alias=undefined,ch,cn,dir,haddr,hport,pid}).
 -export([run/0,start/0,start_link/0,setup/0]).
 -export([join_chat/2,leave_chat/1,join_room/2,leave_room/2,send_chat/2,send_room/3,send_member/3]).
+-export([members/1,rooms/1,my_rooms/1]).
 -export([init/1,handle_call/3,handle_cast/2,handle_info/2,handle_msg/2,handle_ssh_msg/2,terminate/2,code_change/3]).
 
 send_msg(CH,CN,Msg) ->
@@ -64,7 +65,15 @@ send_member(Pid,<<To/binary>>,<<Payload/binary>>) ->
     ssh_channel:cast(Pid,{?SEND_MEMBER,To,Payload}).
 
 %% Queries 
-%% TODO
+
+members(Pid) ->
+    ssh_channel:cast(Pid,?MEMBERS).
+
+rooms(Pid) ->
+    ssh_channel:cast(Pid,?ROOMS).
+
+my_rooms(Pid) ->
+    ssh_channel:cast(Pid,?MY_ROOMS).
 
 %% Callbacks 
 

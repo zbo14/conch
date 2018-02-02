@@ -29,7 +29,16 @@ encode({?SEND_ROOM,<<Topic/binary>>,<<Payload/binary>>}) ->
 encode({?SEND_MEMBER,<<To/binary>>,<<Payload/binary>>}) ->
     TSize = byte_size(To),
     PSize = byte_size(Payload),
-    <<?SEND_MEMBER,TSize,To:TSize/binary,PSize:32,Payload:PSize/binary>>.
+    <<?SEND_MEMBER,TSize,To:TSize/binary,PSize:32,Payload:PSize/binary>>;
+
+encode(Query) ->
+    <<Query>>.
+
+decode(Acc,<<Size,Data:Size/binary,Rest/binary>>) ->
+    decode([Data|Acc],Rest);
+
+decode(Acc,<<>>) ->
+    Acc.
 
 decode(<<?JOIN_CHAT,Size,Alias:Size/binary>>) -> 
     {?JOIN_CHAT,Alias};
@@ -51,6 +60,18 @@ decode(<<?SEND_ROOM,ASize,Alias:ASize/binary,TSize,Topic:TSize/binary,PSize:32,P
 
 decode(<<?SEND_MEMBER,ASize,Alias:ASize/binary,TSize,To:TSize/binary,PSize:32,Payload:PSize/binary>>) -> 
     {?SEND_MEMBER,Alias,To,Payload};
+
+decode(<<?MEMBERS,Rest/binary>>) ->
+    Aliases = decode([],Rest),
+    {?MEMBERS,Aliases};
+
+decode(<<?ROOMS,Rest/binary>>) ->
+    Rooms = decode([],Rest),
+    {?ROOMS,Rooms};
+
+decode(<<?MY_ROOMS,Rest/binary>>) ->
+    MyRooms = decode([],Rest),
+    {?MY_ROOMS,MyRooms};
 
 decode(<<?ALIAS_TAKEN,Size,Alias:Size/binary>>) ->
     {?ALIAS_TAKEN,Alias};
@@ -86,13 +107,22 @@ log({?LEAVE_ROOM,<<Alias/binary>>,<<Topic/binary>>}) ->
     io:format("~s has left ~s room~n",[Alias,Topic]);
 
 log({?SEND_CHAT,<<Alias/binary>>,<<Payload/binary>>}) ->
-    io:format("[chat] ~s: ~s~n",[Alias,Payload]);
+    io:format("chat> ~s: ~s~n",[Alias,Payload]);
 
 log({?SEND_ROOM,<<Alias/binary>>,<<Topic/binary>>,<<Payload/binary>>}) ->
-    io:format("[room ~s] ~s: ~s~n",[Topic,Alias,Payload]);
+    io:format("room ~s> ~s: ~s~n",[Topic,Alias,Payload]);
 
 log({?SEND_MEMBER,<<Alias/binary>>,<<_To/binary>>,<<Payload/binary>>}) ->
-    io:format("[member] ~s: ~s~n",[Alias,Payload]);
+    io:format("member ~s> ~s~n",[Alias,Payload]);
+
+log({?MEMBERS,Aliases}) ->
+    io:format("members: ~p~n",[Aliases]);
+
+log({?ROOMS,Rooms}) ->
+    io:format("rooms: ~p~n",[Rooms]);
+
+log({?MY_ROOMS,MyRooms}) ->
+    io:format("my_rooms: ~p~n",[MyRooms]);
 
 log({?ALIAS_TAKEN,<<Alias/binary>>}) ->
     error_logger:format("chat already has member with alias: ~s~n",[Alias]);
